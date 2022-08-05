@@ -113,13 +113,68 @@ public class Model extends Observable {
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
+        // 1.假设是up方向 设置四个col单独去操作 需要循环
+        // 2.初始状态是vtile的 如果方向不是up，就需要用setViewingPerspective去调整 这个之后再考虑
+        // 3.一个col只move一次 row3 开始 row2如果能merge就merge 这样row1 和row0 就直接到row2这里去 （如果是2-2-2-2咋整啊...)
+        // 4.需要记录score
+        this.board.setViewingPerspective(side);
 
+/*        for (int i = 0; i < this.board.size(); i++) {
+            tiltCol(this.board, i);
+        }*/
+        int len = board.size();
+        boolean[][] merged = new boolean[len][len];
+        for (int r = 2; r >= 0; r--) {
+            for (int c = 0; c <= 3; c++) {
+                Tile t = board.tile(c, r);
+                if (t != null) {
+                    int dc = c, dr = r + 1;
+                    while (dr <= 3) {
+                        Tile dt = board.tile(dc, dr);
+                        if(dt != null) {
+                            if (merged[dc][dr] == true || dt.value() != t.value()) {
+                                dr--;
+                            }
+                            break;
+                        }
+                        if (dr == 3) {
+                            break;
+                        }
+                        dr++;
+                    }
+
+                    if (dr != r) {
+                        changed = true;
+                    }
+
+                    if (board.move(dc,dr, t)) {
+                        merged[dc][dr] = true;
+                        score += board.tile(dc, dr).value();
+                    }
+                }
+            }
+        }
+
+        this.board.setViewingPerspective(Side.NORTH);
         checkGameOver();
         if (changed) {
             setChanged();
         }
         return changed;
     }
+
+/*    private void tiltCol(Board thisCol, int i) {
+        int len = thisCol.size();
+        Tile t;
+        for (int r = len - 1; r > 0; r--) {
+            t = thisCol.tile(i, r-1);
+            if (t == null) {
+                continue;
+            } else if (thisCol.move(i, r, t)) {
+                score += thisCol.tile(i, r).value();
+            }
+        }
+    }*/
 
     /** Checks if the game is over and sets the gameOver variable
      *  appropriately.
@@ -139,11 +194,9 @@ public class Model extends Observable {
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
         int max_size = b.size();
-        for (int col = 0; col < max_size; col++) {
-            for (int row = 0; row < max_size; row++) {
-                if (b.tile(col, row).value() == 0) {
-                    return true;
-                }
+        for (Tile t : b) {
+            if (t == null) {
+                return true;
             }
         }
         return false;
@@ -172,6 +225,27 @@ public class Model extends Observable {
      */
     public static boolean atLeastOneMoveExists(Board b) {
         // TODO: Fill in this function.
+        if (emptySpaceExists(b) || mergeMoveExists(b)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean mergeMoveExists(Board b) {
+        int[][] neighbors = {{0,1}, {0,-1}, {1,0}, {-1,0}};
+        int model_size = b.size();
+        for (Tile t : b) {
+            int c = t.col();
+            int r = t.row();
+            for (int i = 0; i < 4; i++) {
+                int nc = c + neighbors[i][0];
+                int nr = r + neighbors[i][1];
+                if ((nc >= 0 && nc < model_size) && (nr >= 0 && nr < model_size) &&
+                        b.tile(nc, nr).value() == b.tile(c, r).value()) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -214,3 +288,5 @@ public class Model extends Observable {
         return toString().hashCode();
     }
 }
+
+
